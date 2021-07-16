@@ -1,0 +1,73 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: CloudFormation Template to deploy a lambda function
+Resources:
+  LambdaExecutionRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+      - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      - 'arn:aws:iam::aws:policy/AmazonSQSFullAccess'
+  LambdaFunction1:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Code:
+        ZipFile: |
+          from _future_ import print_function
+          import json
+          import boto3
+          print('Loading function')
+      Description: deploy a lambda function
+      FunctionName: lambda-Test1
+      Handler: index.lambda_handler
+      Role: !GetAtt
+      - LambdaExecutionRole
+      - Arn
+      Runtime: python3.0
+      Timeout: '3'
+  LambdaPermission1:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !Ref LambdaFunction1
+      Principal: sns.amazonaws.com
+      SourceArn: !Ref SNSTopic
+  LambdaLogGroup1:
+    Type: 'AWS::Logs::LogGroup'
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${LambdaFunction1}"
+      RetentionInDays: '7'
+  SNSTopic:
+    Type: 'AWS::SNS::Topic'
+    Properties:
+      DisplayName: sns-test
+      Subscription:
+      - Endpoint: !GetAtt
+        - LambdaFunction1
+        - Arn
+        Protocol: lambda
+  SQSQueue:
+    Type: 'AWS::SQS::Queue'
+
+  AllowLambds2SQSPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues: [!Ref 'SQSQueue']
+      PolicyDocument:
+        Version: '2008-10-17'
+        Id: PublicationPolicy1
+        Statement:
+        - Sid: Allow-Lambda-SendMessage
+          Effect: Allow
+          Principal: "*"
+          Action: "sqs:*"
+          Resource: "*"
+          Condition:
+            ArnEquals:
+              aws:SourceArn: !Ref 'LambdaFunction1'
