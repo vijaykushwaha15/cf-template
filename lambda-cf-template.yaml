@@ -1,3 +1,4 @@
+#lambda template
 AWSTemplateFormatVersion: 2010-09-09
 Description: CloudFormation Template to deploy a lambda function
 Resources:
